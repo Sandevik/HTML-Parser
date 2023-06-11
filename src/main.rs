@@ -1,7 +1,6 @@
 use std::fs;
-
-mod htmlparser;
-use htmlparser::HTMLParser;
+mod parser;
+use parser::HTMLParser;
 
 fn main() {
 

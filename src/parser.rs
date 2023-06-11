@@ -99,13 +99,13 @@ impl<'a> HTMLParser<'a> {
         let mut tree: Vec<String> = Vec::new();
         
         while bytes.len() > 0 {
-            let (content, new_bytes) = Self::parse_content(bytes); 
+            let (content, new_bytes) = Self::vectorize_content(bytes); 
             bytes = new_bytes;
             if content != "" && content != " "  {
                 tree.push(content);
             } 
         
-            let (tag, new_bytes) = Self::parse_tag(bytes);
+            let (tag, new_bytes) = Self::vectorize_tag(bytes);
             bytes = new_bytes;
             tree.push(tag);
         
@@ -115,7 +115,7 @@ impl<'a> HTMLParser<'a> {
         println!("{:#?}", tree);
     }
 
-    fn parse_content(mut bytes: Vec<u8>) -> (String, Vec<u8>) {
+    fn vectorize_content(mut bytes: Vec<u8>) -> (String, Vec<u8>) {
         let mut content: Vec<u8> = Vec::new(); 
         let mut idx = 0;
         while idx < bytes.len() {
@@ -134,7 +134,7 @@ impl<'a> HTMLParser<'a> {
         return (string, bytes[idx..].to_vec());
     }
 
-    fn parse_tag(bytes: Vec<u8>) -> (String, Vec<u8>) {
+    fn vectorize_tag(bytes: Vec<u8>) -> (String, Vec<u8>) {
         let mut tag: String = String::from("");
         let mut idx = 0;
         
