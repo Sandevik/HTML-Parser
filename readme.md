@@ -1,0 +1,1 @@
+As of now I have only vectorized the different parts of the html content.
