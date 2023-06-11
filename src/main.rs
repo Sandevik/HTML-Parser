@@ -6,7 +6,7 @@ fn main() {
 
     let html = fs::read_to_string("index.html").expect("File not found");
 
+    let mut parser: HTMLParser = HTMLParser::new();
+    parser.parse(&html);
 
-
-    println!("{:#?}", HTMLParser::parse(&html));
 }
