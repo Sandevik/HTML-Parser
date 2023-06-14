@@ -1,5 +1,7 @@
 #![allow(dead_code, unused_variables, unused_mut)]
 
+
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum ElementType {
     DocType,
@@ -135,41 +137,58 @@ impl<'a> HTMLParser<'a> {
             Some(vector) => {
                 use regex::Regex;
                 let open_close = Regex::new("<\\/?[a-zA-Z0-9 =\"-]+>").expect("Regex is not valid");
-                let self_closing: Regex = Regex::new("<(!DOCTYPE|img|base|br|embed|col|meta|param|input|hr|source|link|wbr|track|area)\\[A-Za-z0-9=\" -\\]+\\/?>").expect("Self-closing Regex not valid");
-
+                let self_closing: Regex = Regex::new("<(!DOCTYPE|img|base|br|embed|col|meta|param|input|hr|source|link|wbr|track|area)[A-Za-z0-9=\" -.,]+/?>").expect("Self-closing Regex not valid");
+                
                 let mut elements: Vec<HTMLElement> = Vec::new();
 
-                let mut last_element: HTMLElement = HTMLElement::default();
+                
                 for (_, tag) in vector.iter().enumerate() {
+
+
+                    let mut last_element: HTMLElement = match elements.last() {
+                        Some(element) => element.to_owned(),
+                        None => HTMLElement::default()
+                    };
+                    
                     if tag != "\r\n" && tag != " " && tag != "\t" && tag != "\n" && tag != "\r" {
-                        // check selfclosing first
+
                         if self_closing.is_match(tag) {
-                            if last_element.r#type.is_some() {
-                                elements.push(last_element.clone());
-                            }
-                            last_element = Self::match_self_closing(tag)
+                            let element = Self::match_self_closing(tag);
+                            elements.push(element);
+
                         } else if open_close.is_match(tag) {
-                            elements.push(last_element.clone());
-                            last_element = Self::match_open_close(tag);
+                            let element: HTMLElement = Self::match_open_close(tag);
+                            //recursive start here!?
+                            println!("{:?}", element);
+                            elements.push(element);
+                            
+                            
+
                         } else {
                             //text is content
+                            elements.pop();
                             last_element.inner_text = Some(tag);
+                            elements.push(last_element);
                         }
                     }
+                
+                    //println!("{:?}", elements);
+                
                 }
 
 
                 
 
-                println!("162: {:#?}", elements);
+                //println!("162: {:#?}, {:?}", elements, self.vectorized);
             }
             None => todo!(),
         }
     }
 
     fn match_open_close(tag: &String) -> HTMLElement<'a> {
-        let cleaned_tag: &Vec<&str> = &tag[1..].split(" ").collect::<Vec<&str>>();
-        let element = match cleaned_tag[0] {
+        let cleaned_tag: String = Self::extract_tag_name(tag);
+        println!("cleaned tag: {:?}", &cleaned_tag);
+        let element = match cleaned_tag.as_str() {
             "html" => HTMLElement::new(ElementType::Html),
             "head" => HTMLElement::new(ElementType::Head),
             "body" => HTMLElement::new(ElementType::Body),
@@ -228,6 +247,27 @@ impl<'a> HTMLParser<'a> {
         return element;
     }
 
+    pub fn extract_tag_name(tag: &String) -> String {
+        let mut cleaned_tag: String = String::new();
+        let mut bytes: Vec<u8> = tag.bytes().collect::<Vec<u8>>();
+        println!("tag {}", tag);
+        while bytes.len() > 0 {
+            let byte: u8 = bytes[0];
+            if byte == b'>' || byte == b' ' {
+                break;
+            }
+            if byte != b'<'{
+                cleaned_tag.push(byte as char);
+            }
+
+            bytes = bytes[1..].to_vec();
+        }
+        println!("extract: {} -> {}", tag, cleaned_tag);
+        return cleaned_tag;
+    }
+
+
+
     fn vectorize(&mut self, str: &'a str) -> () {
         let mut string = String::from(str.clone());
         let mut bytes: Vec<u8> = string.bytes().collect::<Vec<u8>>();
@@ -244,6 +284,8 @@ impl<'a> HTMLParser<'a> {
             bytes = new_bytes;
             tree.push(tag);
         }
+
+        tree.pop();
 
         self.vectorized = Some(tree);
     }
