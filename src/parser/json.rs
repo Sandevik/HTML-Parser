@@ -1,5 +1,4 @@
 use std::vec;
-
 use crate::utils::Shift;
 
 /* Number */
@@ -24,7 +23,7 @@ use crate::utils::Shift;
 
 /* Array */
 /* "{ "f" : ["x", "y", "z"] }" */
-/* JsonType::Variable(Vec<JsonType::Variable>) */
+/* JsonType::Variable({key: "f", value: Some(Vec<JsonType)>) */
 
 /* Object */
 /* Recursive */
@@ -57,13 +56,9 @@ pub struct Variable<T> {
 }
 
 #[derive(Debug, Clone)]
-pub enum JsonType {
-    String(Variable<String>),
-    Number(Variable<f32>),
-    Object(Vec<JsonType>),
-    Array(Vec<JsonType>),
-    Null,
-    Boolean(bool),
+pub enum JsonType<T> {
+    Variable(Variable<Option<T>>),
+    Object(Vec<JsonType<T>>),
 }
 
 pub enum JsonParseType {
@@ -72,12 +67,12 @@ pub enum JsonParseType {
     Array,
 }
 
-pub struct Json {
-    string: String,
-    json_vec: Option<Vec<JsonType>>,
+pub struct Json<T> {
+    src: String,
+    parsed: Option<Vec<JsonType<T>>>,
 }
 
-impl Json {
+impl<T> Json<T> {
     pub fn parse(string: String) {
         let mut vectorized: Vec<String> = Self::vectorize_string(string);
     }
@@ -92,10 +87,10 @@ impl Json {
            
         }
 
-        todo!();
+        vectorized
     }
 
-    fn parse_string(mut bytes: &mut Vec<u8>, parse_as: JsonParseType) -> Vec<JsonType> {
-        todo!();
+    fn parse_string(mut bytes: &mut Vec<u8>, parse_as: JsonParseType) {
+        todo!("Variableize thing");
     }
 }
