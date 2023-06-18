@@ -2,45 +2,6 @@
 use crate::utils::Shift;
 use std::vec;
 
-/* Number */
-/* ""a" : 2 " */
-/* JsonType::Variable({key: "a", value: Some(2)}) */
-
-/* float */
-/* ""b" : 2.17 " */
-/* JsonType::Variable({key: "b", value: Some(2.17)}) */
-
-/* String */
-/* ""c" : "x" " */
-/* JsonType::Variable({key: "c", value: Some("x")}) */
-
-/* Bool */
-/* ""d" : true " */
-/* JsonType::Variable({key: "d", value: Some(true)}) */
-
-/* Null */
-/* "e" : null " */
-/* JsonType::Variable({key: "e", value: None}) */
-
-/* Array */
-/* ""f" : ["x", "y", "z"] " */
-/* JsonType::Variable({key: "f", value: Some(Vec<JsonType)>) */
-
-/* Object */
-/* Recursive */
-
-/* JsonTree */
-/* ""a" : 2, "b" : "x", "c": [1, 2, 3] " */
-/* JsonType::Object(Vec<JsonType>) */
-
-/* Json */
-/*
-    {
-        src: "",
-        parsed: JsonType::Object(Vec<JsonType>)),
-    }
-*/
-
 impl<T> Shift<T> for Vec<T> {
     fn shift(&mut self) -> ()
     where
@@ -67,20 +28,12 @@ pub struct Variable {
     value: VariableValue,
 }
 
-#[derive(Debug, Clone)]
-pub enum JsonParseType {
-    Object,
-    Array,
-    Variables,
-}
-
 pub struct Json {}
 
 impl Json {
     pub fn parse(string: String) -> Vec<Variable> {
         let mut bytes: Vec<u8> = string.bytes().collect::<Vec<u8>>();
         let mut parsed: Vec<Variable> = Vec::new();
-
         while bytes.len() > 0 {
             let mut byte = bytes[0];
             if byte == b'{' {
@@ -92,42 +45,43 @@ impl Json {
                 let array = Self::parse_array(&mut bytes);
                 parsed.push(Variable { key: "".to_owned(), value: array});
             }
-
             bytes.shift();
         }
-
         return parsed;
     }
-
 
     fn parse_variables(mut bytes: &mut Vec<u8>) -> Vec<Variable> {
         let mut variables: Vec<Variable> = Vec::new();
 
         let string: String = String::from_utf8(bytes.clone()).unwrap();
-        let strs: Vec<&str> = string.split(",").collect::<Vec<&str>>();
 
+
+
+        /* TODO: Check if value is an array and parse it as an array */
+
+
+
+        let strs: Vec<&str> = string.split(",").collect::<Vec<&str>>();
+        println!("str: {}", strs[strs.len() - 1]);
+        
         for str in strs {
             variables.push(Self::parse_variable_from_kv(str));
         }
-
         return variables
     }
 
     fn parse_variable_from_kv(str: &str) -> Variable {
         let key = str.split(":").collect::<Vec<&str>>()[0];
         let value_string = str.split(":").collect::<Vec<&str>>()[1];
-        
         let var: Variable = Variable {
             key: key.to_string(),
             value: Self::parse_variable_value(value_string),
         };
-
         return var;
     }
 
     fn parse_variable_value(value_string: &str) -> VariableValue {
         let mut bytes: Vec<u8> = value_string.clone().bytes().collect::<Vec<u8>>();
-        
         let value = match value_string.trim() {
             "null" => VariableValue::None,
             "true" => VariableValue::Bool(true),
@@ -152,8 +106,6 @@ impl Json {
         return value;
     }
 
-    
-
     fn parse_array(mut bytes: &mut Vec<u8>) -> VariableValue {
         let mut array: Vec<_> = vec![];
         let mut current_value: String = String::new();
@@ -163,15 +115,14 @@ impl Json {
             }else {
                 current_value.push(bytes[0] as char);
             }
+            bytes.shift();
         }
-
         return VariableValue::Array(array);
     }
 
     fn parse_string_to_object(mut bytes: &mut Vec<u8>, key: Option<String>) -> Variable {
         let mut variables: Vec<Variable> = Vec::new();
         let mut var: Variable;
-
         let mut nested_string = String::new();
         while bytes.len() > 0 && bytes[0] != b'}' {
             nested_string.push(bytes[0] as char);
@@ -180,12 +131,9 @@ impl Json {
         let obj_vec = Self::parse_variables(
             &mut nested_string.bytes().collect::<Vec<u8>>(),
         );
-
         return match key {
             Some(key) => Variable { key: key, value: VariableValue::Object(obj_vec)},
             None => Variable { key: "".to_string(), value: VariableValue::Object(obj_vec)}
         };
     }
-
-
 }
