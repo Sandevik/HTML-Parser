@@ -51,52 +51,46 @@ impl<T> Shift<T> for Vec<T> {
 }
 
 #[derive(Debug, Clone)]
-enum VariableType {
+pub enum VariableValue {
     String(String),
     Float(f32),
     Integer(i32),
-    None
+    Bool(bool),
+    None,
+    Array(Vec<VariableValue>),
+    Object(Vec<Variable>),
 }
 
 #[derive(Debug, Clone)]
 pub struct Variable {
     key: String,
-    value: VariableType,
+    value: VariableValue,
 }
 
 #[derive(Debug, Clone)]
-pub enum JsonType {
-    Variable(Variable),
-    Object(Vec<JsonType>),
-    Array(Vec<JsonType>),
-}
-
 pub enum JsonParseType {
     Object,
     Array,
     Variables,
 }
 
-pub struct Json {
-    parsed: Vec<JsonType>,
-}
+pub struct Json {}
 
 impl Json {
-    
-    pub fn parse(string: String) -> Vec<JsonType> {
+    pub fn parse(string: String) -> Vec<Variable> {
         let mut bytes: Vec<u8> = string.bytes().collect::<Vec<u8>>();
-        let mut parsed: Vec<JsonType> = Vec::new();
+        let mut parsed: Vec<Variable> = Vec::new();
 
         while bytes.len() > 0 {
             let mut byte = bytes[0];
             if byte == b'{' {
                 bytes.shift();
-                let json_type = Self::parse_string(&mut bytes, JsonParseType::Object);
-                parsed.push(json_type);
+                let object = Self::parse_string_to_object(&mut bytes, None);
+                parsed.push(object);
             } else if byte == b'[' {
                 bytes.shift();
-                let json_type = Self::parse_string(&mut bytes, JsonParseType::Array);
-                parsed.push(json_type);
+                let array = Self::parse_array(&mut bytes);
+                parsed.push(Variable { key: "".to_owned(), value: array});
             }
 
             bytes.shift();
@@ -105,82 +99,93 @@ impl Json {
         return parsed;
     }
 
-    fn parse_string(mut bytes: &mut Vec<u8>, parse_as: JsonParseType) -> JsonType {
-        match parse_as {
-            JsonParseType::Object => {
-                let mut nested_string = String::new();
-                while bytes.len() > 0 && bytes[0] != b'}' {
-                    nested_string.push(bytes[0] as char);
-                    bytes.shift();
-                }
-                let obj_vec = Self::parse_string(
-                    &mut nested_string.bytes().collect::<Vec<u8>>(),
-                    JsonParseType::Variables,
-                );
 
-                return obj_vec;
-            }
-
-            JsonParseType::Array => {
-                let vec: Vec<JsonType> = Vec::new();
-                let mut nested_string = String::new();
-                while bytes.len() > 0 && bytes[0] != b']' {
-                    nested_string.push(bytes[0] as char);
-                    bytes.shift();
-                }
-                return JsonType::Array(vec);
-            }
-
-            JsonParseType::Variables => {
-                let variables = Self::parse_variables(&mut bytes, None);
-                return variables;
-            }
-        }
-    }
-
-    fn parse_variables(mut bytes: &mut Vec<u8>, return_as: Option<JsonParseType>) -> JsonType {
-        let mut json_type_vec: Vec<JsonType> = Vec::new();
+    fn parse_variables(mut bytes: &mut Vec<u8>) -> Vec<Variable> {
+        let mut variables: Vec<Variable> = Vec::new();
 
         let string: String = String::from_utf8(bytes.clone()).unwrap();
         let strs: Vec<&str> = string.split(",").collect::<Vec<&str>>();
 
         for str in strs {
-            let key = str.split(":").collect::<Vec<&str>>()[0];
-            let value_string = str.split(":").collect::<Vec<&str>>()[1];
-            let mut value: VariableType;
-
-            if value_string.trim() == "null" {
-                value = VariableType::None
-            } else if value_string.contains("\"") {
-                value = VariableType::String(value_string.to_string());
-            } else if value_string.contains(".") {
-                value = VariableType::Float(
-                    value_string
-                        .trim()
-                        .parse::<f32>()
-                        .expect(&format!("Could not parse {}", value_string)),
-                );
-            } else {
-                value = VariableType::Integer(
-                    value_string
-                        .trim()
-                        .parse::<i32>()
-                        .expect(&format!("Could not parse {}", value_string)),
-                )
-            }
-
-            let var: Variable = Variable {
-                key: key.to_string(),
-                value: value,
-            };
-
-            json_type_vec.push(JsonType::Variable(var));
+            variables.push(Self::parse_variable_from_kv(str));
         }
 
-        return match return_as {
-            Some(JsonParseType::Variables) => JsonType::Array(json_type_vec),
-            Some(JsonParseType::Array) => JsonType::Array(json_type_vec),
-            Some(JsonParseType::Object) | None => JsonType::Object(json_type_vec),
+        return variables
+    }
+
+    fn parse_variable_from_kv(str: &str) -> Variable {
+        let key = str.split(":").collect::<Vec<&str>>()[0];
+        let value_string = str.split(":").collect::<Vec<&str>>()[1];
+        
+        let var: Variable = Variable {
+            key: key.to_string(),
+            value: Self::parse_variable_value(value_string),
+        };
+
+        return var;
+    }
+
+    fn parse_variable_value(value_string: &str) -> VariableValue {
+        let mut bytes: Vec<u8> = value_string.clone().bytes().collect::<Vec<u8>>();
+        
+        let value = match value_string.trim() {
+            "null" => VariableValue::None,
+            "true" => VariableValue::Bool(true),
+            "false" => VariableValue::Bool(false),
+            str if str.contains("[") => {
+               Self::parse_array(&mut bytes)
+            }
+            str if str.contains("\"") => VariableValue::String(value_string.to_string()),
+            str if str.contains(".") => VariableValue::Float(
+                value_string
+                    .trim()
+                    .parse::<f32>()
+                    .expect(&format!("Could not parse {}", value_string)),
+            ),
+            _ => VariableValue::Integer(
+                value_string
+                    .trim()
+                    .parse::<i32>()
+                    .expect(&format!("Could not parse {}", value_string)),
+            ),
+        };
+        return value;
+    }
+
+    
+
+    fn parse_array(mut bytes: &mut Vec<u8>) -> VariableValue {
+        let mut array: Vec<_> = vec![];
+        let mut current_value: String = String::new();
+        while bytes.len() > 0 {
+            if bytes[0] == b',' {
+                array.push(Self::parse_variable_value(&current_value))
+            }else {
+                current_value.push(bytes[0] as char);
+            }
+        }
+
+        return VariableValue::Array(array);
+    }
+
+    fn parse_string_to_object(mut bytes: &mut Vec<u8>, key: Option<String>) -> Variable {
+        let mut variables: Vec<Variable> = Vec::new();
+        let mut var: Variable;
+
+        let mut nested_string = String::new();
+        while bytes.len() > 0 && bytes[0] != b'}' {
+            nested_string.push(bytes[0] as char);
+            bytes.shift();
+        }
+        let obj_vec = Self::parse_variables(
+            &mut nested_string.bytes().collect::<Vec<u8>>(),
+        );
+
+        return match key {
+            Some(key) => Variable { key: key, value: VariableValue::Object(obj_vec)},
+            None => Variable { key: "".to_string(), value: VariableValue::Object(obj_vec)}
         };
     }
+
+
 }
