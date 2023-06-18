@@ -1,1 +1,1 @@
-As of now I have only vectorized the different parts of the html content.
+Can as of now parse variables as strings, ints, floats, bools, None and objects, arrays will be parsable soon.
