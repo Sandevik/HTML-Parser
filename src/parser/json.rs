@@ -41,6 +41,7 @@ impl Json {
                 let object = Self::parse_string_to_object(&mut bytes, None);
                 parsed.push(object);
             } else if byte == b'[' {
+                println!("parsing array");
                 bytes.shift();
                 let array = Self::parse_array(&mut bytes);
                 parsed.push(Variable { key: "".to_owned(), value: array});
@@ -52,29 +53,61 @@ impl Json {
 
     fn parse_variables(mut bytes: &mut Vec<u8>) -> Vec<Variable> {
         let mut variables: Vec<Variable> = Vec::new();
-
+        let mut current_kv_pair: String = String::new();
         let string: String = String::from_utf8(bytes.clone()).unwrap();
-
 
 
         /* TODO: Check if value is an array and parse it as an array */
 
 
+        while bytes.len() > 0 {
+            let byte = bytes[0];
 
-        let strs: Vec<&str> = string.split(",").collect::<Vec<&str>>();
-        println!("str: {}", strs[strs.len() - 1]);
-        
-        for str in strs {
-            variables.push(Self::parse_variable_from_kv(str));
+            if byte == b'[' {
+
+                while bytes.len() > 0 && bytes[0] != b']' {
+                    // this should become [1,2,34,5,6676]
+                    if !bytes[0].is_ascii_whitespace() {
+                        current_kv_pair.push(bytes[0] as char);
+                    }
+                    bytes.shift();
+                }
+                bytes.shift();
+
+                current_kv_pair.push(']');
+
+                
+                
+                if !bytes.len() > 1 {
+                    bytes.shift();
+                    variables.push(Self::parse_variable_from_kv(&current_kv_pair));
+                    current_kv_pair = String::new();
+                }
+
+                print!("left: ");
+                for byte in bytes.iter(){
+                    print!("{}", *byte as char)
+                }
+                println!("");
+
+            }else if byte == b',' {
+                variables.push(Self::parse_variable_from_kv(&current_kv_pair));
+                current_kv_pair = String::new();
+            }else{
+                current_kv_pair.push(byte as char);
+            }
+
+            bytes.shift();
         }
-        return variables
+
+
+        println!("{:?}", variables);
+
+
+        return Vec::new();//variables
     }
 
     fn parse_variable_from_kv(str: &str) -> Variable {
-
-        /* TODO: clean keys (remove \"\" from keys ") */
-
-
         let key = &Self::clean_key(str.split(":").collect::<Vec<&str>>()[0].trim());
         let value_string = str.split(":").collect::<Vec<&str>>()[1];
         let var: Variable = Variable {
@@ -91,7 +124,7 @@ impl Json {
             "true" => VariableValue::Bool(true),
             "false" => VariableValue::Bool(false),
             str if str.contains("[") => {
-               Self::parse_array(&mut bytes)
+               VariableValue::Array(Self::parse_array_values(&mut bytes))
             }
             str if str.contains("\"") => VariableValue::String(value_string.to_string()),
             str if str.contains(".") => VariableValue::Float(
@@ -122,6 +155,15 @@ impl Json {
             bytes.shift();
         }
         return VariableValue::Array(array);
+    }
+
+    fn parse_array_values(mut bytes: &mut Vec<u8>) -> Vec<VariableValue> {
+
+
+        // TODO \\
+
+
+        return vec![VariableValue::Integer(1), VariableValue::Integer(1), VariableValue::Integer(1)];
     }
 
     fn parse_string_to_object(mut bytes: &mut Vec<u8>, key: Option<String>) -> Variable {
