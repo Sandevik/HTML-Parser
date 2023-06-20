@@ -108,7 +108,7 @@ impl Json {
     }
 
     fn parse_variable_from_kv(str: &str) -> Variable {
-        let key = &Self::clean_key(str.split(":").collect::<Vec<&str>>()[0].trim());
+        let key = &Self::clean_string(str.split(":").collect::<Vec<&str>>()[0].trim());
         let value_string = str.split(":").collect::<Vec<&str>>()[1];
         let var: Variable = Variable {
             key: key.to_string(),
@@ -126,7 +126,7 @@ impl Json {
             str if str.contains("[") => {
                VariableValue::Array(Self::parse_array_values(&mut bytes))
             }
-            str if str.contains("\"") => VariableValue::String(value_string.to_string()),
+            str if str.contains("\"") => VariableValue::String(Self::clean_string(value_string.trim()).to_string()),
             str if str.contains(".") => VariableValue::Float(
                 value_string
                     .trim()
@@ -183,7 +183,7 @@ impl Json {
         };
     }
 
-    fn clean_key(str: &str) -> String {
+    fn clean_string(str: &str) -> String {
         return String::from_utf8(str.bytes().filter(|char| *char != b'"' || *char != b'\"').collect::<Vec<u8>>()).unwrap();
     }
 }
