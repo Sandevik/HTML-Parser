@@ -71,7 +71,11 @@ impl Json {
     }
 
     fn parse_variable_from_kv(str: &str) -> Variable {
-        let key = str.split(":").collect::<Vec<&str>>()[0];
+
+        /* TODO: clean keys (remove \"\" from keys ") */
+
+
+        let key = &Self::clean_key(str.split(":").collect::<Vec<&str>>()[0].trim());
         let value_string = str.split(":").collect::<Vec<&str>>()[1];
         let var: Variable = Variable {
             key: key.to_string(),
@@ -135,5 +139,9 @@ impl Json {
             Some(key) => Variable { key: key, value: VariableValue::Object(obj_vec)},
             None => Variable { key: "".to_string(), value: VariableValue::Object(obj_vec)}
         };
+    }
+
+    fn clean_key(str: &str) -> String {
+        return String::from_utf8(str.bytes().filter(|char| *char != b'"' || *char != b'\"').collect::<Vec<u8>>()).unwrap();
     }
 }
