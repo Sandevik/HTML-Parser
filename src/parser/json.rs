@@ -156,9 +156,9 @@ impl Json {
         let mut values: Vec<VariableValue> = Vec::new();
         let mut current_value: String = String::new();
         while bytes.len() > 0 {
-            if bytes[0] != b'[' && bytes[0] != b']' && bytes[0] != b',' {
+            if bytes[0] != b'[' && bytes[0] != b',' && bytes[0] != b']' {
                 current_value.push(bytes[0] as char); 
-            }else if bytes[0] == b',' {
+            }else if bytes[0] == b',' || bytes[0] == b']' {
                 values.push(Self::parse_variable_value(&current_value));
                 current_value = String::new();
             }
