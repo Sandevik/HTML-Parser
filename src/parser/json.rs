@@ -1,6 +1,5 @@
 #![allow(dead_code, unused_assignments, unused_mut, unused_variables)]
 use crate::utils::Shift;
-use std::vec;
 
 impl<T> Shift<T> for Vec<T> {
     fn shift(&mut self) -> ()
@@ -59,47 +58,36 @@ impl Json {
         let mut current_kv_pair: String = String::new();
         let string: String = String::from_utf8(bytes.clone()).unwrap();
 
-        /* TODO: Check if value is an array and parse it as an array */
+        /* TODO: Add compatability for nested objects */
+        /* TODO: Remove trailing commas in values? */
 
-        while bytes.len() > 0 {
+        while bytes.len() >= 0 {
+            if bytes.len() == 0 {
+                variables.push(Self::parse_variable_from_kv(&current_kv_pair));
+                break;
+            }
             let byte = bytes[0];
-
             if byte == b'[' {
-                while bytes.len() > 0 && bytes[0] != b']' {
+                while bytes.len() > 0 && bytes[0] != b']' {  
                     // this should become [1,2,34,5,6676]
                     if !bytes[0].is_ascii_whitespace() {
                         current_kv_pair.push(bytes[0] as char);
                     }
                     bytes.shift();
                 }
-                bytes.shift();
-
                 current_kv_pair.push(']');
-
-                if !bytes.len() > 1 {
-                    bytes.shift();
-                    variables.push(Self::parse_variable_from_kv(&current_kv_pair));
-                    current_kv_pair = String::new();
-                }
-            } else if byte == b',' {
+            
+            } else if (byte == b',' && !String::is_empty(&current_kv_pair)) || byte == b']' {
                 variables.push(Self::parse_variable_from_kv(&current_kv_pair));
                 current_kv_pair = String::new();
-            } else {
+            } else{
                 current_kv_pair.push(byte as char);
             }
-
-            /*  print!("left: ");
-            for byte in bytes.iter() {
-                print!("{}", *byte as char)
-            }
-            println!(""); */
 
             bytes.shift();
         }
 
-        println!("{:?}", variables);
-
-        return Vec::new(); //variables
+        return variables
     }
 
     fn parse_variable_from_kv(str: &str) -> Variable {
@@ -126,13 +114,13 @@ impl Json {
                 value_string
                     .trim()
                     .parse::<f32>()
-                    .expect(&format!("Could not parse {}", value_string)),
+                    .expect(&format!("Could not parse int: {}", value_string)),
             ),
             _ => VariableValue::Integer(
                 value_string
                     .trim()
                     .parse::<i32>()
-                    .expect(&format!("Could not parse {}", value_string)),
+                    .expect(&format!("Could not parse int: {}", value_string)),
             ),
         };
         return value;
