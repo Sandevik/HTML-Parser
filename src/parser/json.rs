@@ -122,41 +122,52 @@ impl Tokenizer {
 pub struct Parser {}
 impl Parser {
 
-    pub fn variablize(string: &str) {
+    pub fn variablize(string: &str) -> Vec<VariableTypedValue> {
         let mut variables: Vec<VariableTypedValue> = Vec::new(); 
         let mut tokens: Vec<TokenType> = Tokenizer::tokenize(string);
         while tokens.len() > 0 {
             let token = &tokens[0];
             match token {
-                TokenType::OpenCurly => println!("{{ parse obj }}"), /*  variables.push(Self::parse_obj(&mut tokens)) */
-                TokenType::CloseCurly => println!("{{ obj ended }}"),
+                TokenType::OpenCurly => {},//println!("{{ parse obj }}"),   /* variables.push(Self::parse_obj(&mut tokens)), */
+                TokenType::CloseCurly => {},//println!("{{ obj ended }}"),
                 TokenType::OpenBrack => variables.push(Self::parse_arr(&mut tokens)),
 
-                TokenType::Ident(value) => println!("ident: {:?}", Self::parse_value_from_string(TokenType::Ident(value.clone())).unwrap()),
-                TokenType::Colon => println!("previous value was key, next is value"),
-                TokenType::Comma => println!("new variable"),
+                TokenType::Ident(value) => {}//println!("ident: {:?}", Self::parse_value_from_string(TokenType::Ident(value.clone())).unwrap()),
+                TokenType::Colon => {},//println!("previous value was key, next is value"),
+                TokenType::Comma => {},//println!("new variable"),
                 
-                token => println!("Token \"{:?}\" has not been matched yet", token)
+                token => {},//println!("Token \"{:?}\" has not been matched yet", token)
             }
-            tokens = tokens[1..].to_vec();
+            if tokens.len() > 0 {
+                tokens = tokens[1..].to_vec();
+            } 
         }
         println!("{:?}", variables);
+        return variables;
     }
 
     fn parse_arr(tokens: &mut Vec<TokenType>) -> VariableTypedValue {
         let mut values: Vec<VariableTypedValue> = Vec::<VariableTypedValue>::new();
         //consume the "[" to prevent infinite loop
         *tokens = tokens[1..].to_vec();
+        
         while tokens.len() > 0 && tokens[0] != TokenType::CloseBrack {
-            let token = &tokens[0];
+            let token: &TokenType = &tokens[0];
             match token {
+                TokenType::OpenBrack => {
+                    values.push(Self::parse_arr(tokens));
+                },
                 TokenType::Ident(val) => values.push(VariableTypedValue::Value(Self::parse_value_from_string(token.clone()).unwrap())),
                 _ => {}
             }
-            *tokens = tokens[1..].to_vec();
+            if tokens.len() > 0 {
+                *tokens = tokens[1..].to_vec();
+            } 
         }
         //consume the "]" to prevent adding it as a variable
-        *tokens = tokens[1..].to_vec();
+        if tokens.len() > 0 {
+            *tokens = tokens[1..].to_vec();
+        } 
         return VariableTypedValue::Array(values);
     }
 
@@ -186,8 +197,7 @@ impl Parser {
                     value = VariableTypedValue::Value(Value::Null);
                 }
             }
-            
-            
+    
             *tokens = tokens[1..].to_vec();
         }
         //consume the "}" to prevent adding it as a variable
@@ -219,6 +229,7 @@ impl Parser {
     fn clean_string(str: &str) -> String {
         str.chars().filter(|ch| *ch != '\"').collect::<String>()
     }
+
 }
 
 
