@@ -1,7 +1,3 @@
-#![allow(dead_code, unused_mut, unused_variables, unreachable_patterns)]
-
-use std::collections::HashMap;
-
 #[derive(Debug)]
 pub enum Value {
     Int(i32),
@@ -14,9 +10,20 @@ pub enum Value {
 
 #[derive(Debug)]
 pub enum VariableTypedValue {
-    Object(HashMap<String, VariableTypedValue>),
+    Object(Vec<Variable>),
     Array(Vec<VariableTypedValue>),
     Value(Value),
+}
+
+#[derive(Debug)]
+pub struct Variable {
+    key: String,
+    value: VariableTypedValue,
+}
+impl Variable {
+    pub fn new() -> Variable {
+        Variable { key: "".to_string(), value: VariableTypedValue::Value(Value::Null) }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -125,20 +132,19 @@ impl Parser {
             let token = &tokens[0];
             match token {
                 TokenType::OpenCurly => variables.push(Self::parse_obj(&mut tokens)),
-                TokenType::CloseCurly => {} //println!("{{ obj ended }}"),
+                TokenType::CloseCurly => {}
                 TokenType::OpenBrack => variables.push(Self::parse_arr(&mut tokens)),
 
                 TokenType::Ident(value) => {} //println!("ident: {:?}", Self::parse_value_from_string(TokenType::Ident(value.clone())).unwrap()),
-                TokenType::Colon => {}        //println!("previous value was key, next is value"),
-                TokenType::Comma => {}        //println!("new variable"),
+                TokenType::Colon => {}
+                TokenType::Comma => {}
 
-                token => {} //println!("Token \"{:?}\" has not been matched yet", token)
+                _ => {} //println!("Token \"{:?}\" has not been matched yet", token)
             }
             if tokens.len() > 0 {
                 tokens = tokens[1..].to_vec();
             }
         }
-        println!("{:?}", variables);
         return variables;
     }
 
@@ -168,7 +174,7 @@ impl Parser {
     }
 
     fn parse_obj(tokens: &mut Vec<TokenType>) -> VariableTypedValue {
-        let mut hashmap: HashMap<String, VariableTypedValue> = HashMap::new();
+        let mut vars: Vec<Variable> = Vec::<Variable>::new();
         let mut key: String = String::new();
         //consume "{" to prevent infinate loop
         *tokens = tokens[1..].to_vec();
@@ -178,7 +184,7 @@ impl Parser {
 
             match token {
                 TokenType::OpenCurly => {
-                    hashmap.insert(key, Self::parse_obj(tokens));
+                    vars.push(Variable {key: key, value: Self::parse_obj(tokens)});
                     key = String::new();
                 }
                 token => {
@@ -192,7 +198,7 @@ impl Parser {
                     } else {
                         match token {
                             TokenType::Ident(val) => {
-                                hashmap.insert(key, VariableTypedValue::Value(Self::parse_value_from_string(token.clone()).unwrap()));
+                                vars.push(Variable {key: key, value: VariableTypedValue::Value(Self::parse_value_from_string(token.clone()).unwrap())});
                                 key = String::new();
                             },
                             _ => {}
@@ -208,7 +214,7 @@ impl Parser {
         if tokens.len() > 0 {
             *tokens = tokens[1..].to_vec();
         }
-        VariableTypedValue::Object(hashmap)
+        VariableTypedValue::Object(vars)
     }
 
     fn parse_value_from_string(token: TokenType) -> Result<Value, String> {
