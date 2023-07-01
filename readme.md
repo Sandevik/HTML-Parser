@@ -31,38 +31,23 @@ Below is another example of the result.
         "city" : "Big City"
     },
     "pets" : [{"animal" : "cat", "age" : 2, "name" : "Tom"}, {"animal" : "mouse", "age" : 1, "name" : "Jerry"}],
-    "lastCoordinates" : [["lat 84,45369", "long 12.5467"], ["lat 55.255657", "long 67.35677"]]
+    "lastCoordinates" : [["lat 84.45369", "long 12.5467"], ["lat 55.255657", "long 67.35677"]]
 }
 ```
 returns 
 
 ```rust
-[
-    Object(
+Object(
         {
+            "firstName": Value(
+                String(
+                    "John",
+                ),
+            ),
             "age": Value(
                 Int(
                     23,
                 ),
-            ),
-            "residency": Object(
-                {
-                    "address": Value(
-                        String(
-                            "One Way 21",
-                        ),
-                    ),
-                    "city": Value(
-                        String(
-                            "Big City",
-                        ),
-                    ),
-                    "zip": Value(
-                        Int(
-                            123567,
-                        ),
-                    ),
-                },
             ),
             "lastName": Value(
                 String(
@@ -78,14 +63,14 @@ returns
                                     "cat",
                                 ),
                             ),
-                            "age": Value(
-                                Int(
-                                    2,
-                                ),
-                            ),
                             "name": Value(
                                 String(
                                     "Tom",
+                                ),
+                            ),
+                            "age": Value(
+                                Int(
+                                    2,
                                 ),
                             ),
                         },
@@ -97,14 +82,14 @@ returns
                                     "Jerry",
                                 ),
                             ),
-                            "age": Value(
-                                Int(
-                                    1,
-                                ),
-                            ),
                             "animal": Value(
                                 String(
                                     "mouse",
+                                ),
+                            ),
+                            "age": Value(
+                                Int(
+                                    1,
                                 ),
                             ),
                         },
@@ -120,12 +105,7 @@ returns
                                 [
                                     Value(
                                         String(
-                                            "lat 84",
-                                        ),
-                                    ),
-                                    Value(
-                                        String(
-                                            "45369",
+                                            "lat 84.45369",
                                         ),
                                     ),
                                     Value(
@@ -153,14 +133,27 @@ returns
                     ),
                 ],
             ),
-            "firstName": Value(
-                String(
-                    "John",
-                ),
+            "residency": Object(
+                {
+                    "address": Value(
+                        String(
+                            "One Way 21",
+                        ),
+                    ),
+                    "zip": Value(
+                        Int(
+                            123567,
+                        ),
+                    ),
+                    "city": Value(
+                        String(
+                            "Big City",
+                        ),
+                    ),
+                },
             ),
         },
-    ),
-]
+    )
 
 ```
 
