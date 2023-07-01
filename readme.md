@@ -1,7 +1,7 @@
 
 # Parsers
 
-# Json parser / deserializer
+## Json parser / deserializer
 I made this parser in three iterations. This was very benefitial for me learning how to program with bytes and how a parser / tokenizer works.
 This also helped me a lot to develop a greater understanding for the Rust programming language.
 The parser works, but there might be some bugs here and there but it fine.   
@@ -153,5 +153,5 @@ returns
 
 
 
-#Html parser
+## Html parser
 - On going
