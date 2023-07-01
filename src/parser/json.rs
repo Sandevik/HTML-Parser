@@ -1,4 +1,4 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap};
 
 #[derive(Debug)]
 pub enum Value {
@@ -151,6 +151,7 @@ impl Json {
             let token: &TokenType = &tokens[0];
             match token {
                 TokenType::OpenBrack => values.push(Self::parse_arr(tokens)),
+                TokenType::OpenCurly => values.push(Self::parse_obj(tokens)),
                 TokenType::Ident(val) => values.push(VariableTypedValue::Value(
                     Self::parse_value_from_string(token.clone()).unwrap(),
                 )),
