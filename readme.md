@@ -8,8 +8,15 @@ The parser works, but there might be some bugs here and there but it's fine.
 
 This project also allowed me to understand how objects, and arrays differ on a lower level
 
-Try it out using the ```rust Json::parse()``` function and add a string slice (```rust &str ```) as an argument. Example:
-```rust Json::parse("{\"firstName\" : \"John\",\"lastName\" : \"Doe\"}"); ```
+Try it out using the ```rust Json::parse()``` function and add a string slice 
+```rust 
+&str 
+```
+as an argument. Example:
+```rust 
+Json::parse("{\"firstName\" : \"John\",\"lastName\" : \"Doe\"}");
+```
+Below is another example of the result.
 
 ```json
 {
