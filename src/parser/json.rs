@@ -1,3 +1,5 @@
+use std::collections::{HashSet, HashMap};
+
 #[derive(Debug)]
 pub enum Value {
     Int(i32),
@@ -10,21 +12,13 @@ pub enum Value {
 
 #[derive(Debug)]
 pub enum VariableTypedValue {
-    Object(Vec<Variable>),
-    Array(Vec<VariableTypedValue>),
+    Object(Object),
+    Array(Array),
     Value(Value),
 }
 
-#[derive(Debug)]
-pub struct Variable {
-    key: String,
-    value: VariableTypedValue,
-}
-impl Variable {
-    pub fn new() -> Variable {
-        Variable { key: "".to_string(), value: VariableTypedValue::Value(Value::Null) }
-    }
-}
+pub type Object = HashMap<String, VariableTypedValue>;
+pub type Array = Vec<VariableTypedValue>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
@@ -123,9 +117,9 @@ impl Tokenizer {
     }
 }
 
-pub struct Parser {}
-impl Parser {
-    pub fn variablize(string: &str) -> Vec<VariableTypedValue> {
+pub struct Json {}
+impl Json {
+    pub fn parse(string: &str) -> Vec<VariableTypedValue> {
         let mut variables: Vec<VariableTypedValue> = Vec::new();
         let mut tokens: Vec<TokenType> = Tokenizer::tokenize(string);
         while tokens.len() > 0 {
@@ -174,7 +168,7 @@ impl Parser {
     }
 
     fn parse_obj(tokens: &mut Vec<TokenType>) -> VariableTypedValue {
-        let mut vars: Vec<Variable> = Vec::<Variable>::new();
+        let mut obj: Object = Object::new();
         let mut key: String = String::new();
         //consume "{" to prevent infinate loop
         *tokens = tokens[1..].to_vec();
@@ -184,7 +178,7 @@ impl Parser {
 
             match token {
                 TokenType::OpenCurly => {
-                    vars.push(Variable {key: key, value: Self::parse_obj(tokens)});
+                    obj.insert(key, Self::parse_obj(tokens));
                     key = String::new();
                 }
                 token => {
@@ -197,8 +191,12 @@ impl Parser {
                         };
                     } else {
                         match token {
+                            TokenType::OpenBrack => {
+                                obj.insert(key, Self::parse_arr(tokens));
+                                key = String::new();
+                            },
                             TokenType::Ident(val) => {
-                                vars.push(Variable {key: key, value: VariableTypedValue::Value(Self::parse_value_from_string(token.clone()).unwrap())});
+                                obj.insert(key, VariableTypedValue::Value(Self::parse_value_from_string(token.clone()).unwrap()));
                                 key = String::new();
                             },
                             _ => {}
@@ -214,7 +212,7 @@ impl Parser {
         if tokens.len() > 0 {
             *tokens = tokens[1..].to_vec();
         }
-        VariableTypedValue::Object(vars)
+        VariableTypedValue::Object(obj)
     }
 
     fn parse_value_from_string(token: TokenType) -> Result<Value, String> {
