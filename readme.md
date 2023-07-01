@@ -6,6 +6,8 @@ I made this parser in three iterations. This was very benefitial for me learning
 This also helped me a lot to develop a greater understanding for the Rust programming language.
 The parser works, but there might be some bugs here and there but it's fine.   
 
+This project also allowed me to understand how objects, and arrays differ on a lower level
+
 ```json
 {
     "firstName" : "John",
