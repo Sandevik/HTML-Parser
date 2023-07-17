@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_variables, unused_assignments, unused_mut)]
+
 use std::collections::{HashMap};
 
 #[derive(Debug)]
