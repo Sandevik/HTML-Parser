@@ -40,6 +40,7 @@ impl Consumer {
 #[derive(Debug)]
 pub enum Token {
     Doctype(String),
+    XML(String),
     StartTag(String),
     EndTag(String),
     SelfClosing(String),
@@ -54,7 +55,8 @@ enum TokenType {
     SelfClosing,
     Comment,
     EOF,
-    Unknown
+    Unknown,
+    XML
 }
 
 pub struct Tokenizer {}
@@ -84,6 +86,10 @@ impl Tokenizer {
                             token_type = TokenType::Comment;
                         }
                         ident.push(consumer.ch);
+                    } else if consumer.peek() == '?' {
+                        //xml declatation
+                        /* TODO: Add functionality to parse PHP */
+                        token_type = TokenType::XML
                     } else {
                         // opening tag
                         token_type = TokenType::StartTag;
@@ -101,13 +107,14 @@ impl Tokenizer {
                     ident.push('>');
                     let copy_ident = ident.clone();
                     let token: Token = match token_type {
-                        TokenType::Comment => Token::Comment(copy_ident),
                         TokenType::Doctype => Token::Doctype(copy_ident),
+                        TokenType::XML => Token::XML(copy_ident),
                         TokenType::StartTag => Token::StartTag(copy_ident),
                         TokenType::EndTag => Token::EndTag(copy_ident),
                         TokenType::SelfClosing => Token::SelfClosing(copy_ident),
+                        TokenType::Comment => Token::Comment(copy_ident),
                         TokenType::EOF => Token::EOF,
-                        TokenType::Unknown => Token::String(copy_ident)
+                        TokenType::Unknown => Token::String(copy_ident),
                     };
                     tokens.push(token);
                     ident = String::new();
