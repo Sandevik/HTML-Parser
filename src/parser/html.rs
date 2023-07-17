@@ -39,7 +39,7 @@ impl Consumer {
 
 #[derive(Debug)]
 pub enum Token {
-    Doctype,
+    Doctype(String),
     StartTag(String),
     EndTag(String),
     SelfClosing(String),
@@ -53,7 +53,6 @@ enum TokenType {
     EndTag,
     SelfClosing,
     Comment,
-    String,
     EOF,
     Unknown
 }
@@ -103,11 +102,10 @@ impl Tokenizer {
                     let copy_ident = ident.clone();
                     let token: Token = match token_type {
                         TokenType::Comment => Token::Comment(copy_ident),
-                        TokenType::Doctype => Token::Doctype,
+                        TokenType::Doctype => Token::Doctype(copy_ident),
                         TokenType::StartTag => Token::StartTag(copy_ident),
                         TokenType::EndTag => Token::EndTag(copy_ident),
                         TokenType::SelfClosing => Token::SelfClosing(copy_ident),
-                        TokenType::String => Token::String(copy_ident),
                         TokenType::EOF => Token::EOF,
                         TokenType::Unknown => Token::String(copy_ident)
                     };
