@@ -1,6 +1,6 @@
-use parser::html::Consumer;
+use parser::xml_html_php::Consumer;
 
-use crate::parser::html::Tokenizer;
+use crate::parser::xml_html_php::Tokenizer;
 
 //use std::fs;
 mod parser;
