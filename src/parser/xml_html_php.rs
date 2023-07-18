@@ -96,6 +96,7 @@ impl Tokenizer {
                         } else {
                             token_type = TokenType::PHP
                         }
+                        ident.push(consumer.ch);
 
                     } else {
                         // opening tag
@@ -103,7 +104,7 @@ impl Tokenizer {
                         ident.push(consumer.ch);
                     }
                 }
-                '/' | '?' => {
+                '/' => {
                     if consumer.peek() == '>' {
                         //self closing
                         token_type = TokenType::SelfClosing;
