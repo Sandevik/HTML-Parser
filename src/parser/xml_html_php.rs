@@ -108,6 +108,8 @@ impl Tokenizer {
                         //self closing
                         token_type = TokenType::SelfClosing;
                         ident.push(consumer.ch);
+                    }else{
+                        ident.push(consumer.ch);
                     }
                 }
                 '>' => {
