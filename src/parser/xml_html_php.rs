@@ -61,7 +61,7 @@ enum TokenType {
     PHP,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Tag {
     Doctype,
     XML,
@@ -89,7 +89,10 @@ pub enum Tag {
     Img,
 
     PHP,
+    
+    
     Unknown,
+    Root,
 }
 
 pub type Attributes = Vec<HashMap<String, String>>;
@@ -99,6 +102,7 @@ pub struct Element {
     tag: Tag,
     content: Option<String>,
     attr: Option<Attributes>,
+    children: Option<Vec<Element>>,
 }
 impl Element {
     pub fn default() -> Element {
@@ -106,14 +110,16 @@ impl Element {
             tag: Tag::Unknown,
             content: None,
             attr: None,
+            children: None
         }
     }
 
-    pub fn new(tag: Tag, content: Option<String>, attr: Option<Attributes>) -> Element {
+    pub fn new(tag: Tag, content: Option<String>, attr: Option<Attributes>, children: Option<Vec<Element>>) -> Element {
         Element {
             tag: tag,
             content: content,
             attr: attr,
+            children: children,
         }
     }
 }
@@ -194,40 +200,14 @@ impl Parser {
         return tokens;
     }
 
-    pub fn parse_elements(consumer: Consumer) -> Vec<Element> {
-        let mut elements = Vec::<Element>::new();
-        let mut tokens = Self::tokenize(consumer);
-        let mut element: Element = Element::default();
+    pub fn parse(consumer: Consumer) -> Element {
+        let mut root_element: Element = Element::default();
+        let mut tokens: Vec<Token> = Self::tokenize(consumer);
+        root_element.children = Self::parse_elements(&mut tokens, None);
+        root_element.tag = Tag::Root;
+        
 
-        while tokens.len() > 0 {
-            match &tokens[0] {
-                Token::Doctype(str) => element = Element {tag: Tag::Doctype, content: None, attr: Self::parse_attributes(str)},
-                Token::Content(str) => element = Element {tag: element.tag, content: Some(str.to_string()), attr: element.attr},
-                Token::StartTag(str) => element = Element {tag: Self::parse_tag(str), content: None, attr: Self::parse_attributes(str)},
-                Token::EndTag(str) => {
-                    elements.push(element);
-                    element = Element::default();
-                }
-                Token::SelfClosing(str) => {
-                    if element != Element::default() {
-                        elements.push(element);
-                        element = Element::default();
-                    }
-                    elements.push(Element::new(Self::parse_tag(str), None, Self::parse_attributes(str)));
-                }
-                Token::PHP(str) => elements.push(Self::parse_php_tag(str)),
-                Token::XML(str) => elements.push(Element::new(Tag::XML, None, Self::parse_attributes(str))),
-
-                Token::Comment(str) => {}
-                Token::EOF => {}
-            }
-
-
-
-
-            tokens = tokens[1..].to_vec();
-        }
-        return elements;
+        return root_element;
     }
 
 
@@ -237,12 +217,99 @@ impl Parser {
     }
 
     fn parse_tag(str: &str) -> Tag {
-        return Tag::Unknown;
+        let mut tag: Tag = Tag::Unknown;
+
+        /* TODO: Redo match with regex */
+
+        match str.split(' ').collect::<Vec<&str>>()[0] {
+            "<!Doctype" => tag = Tag::Doctype,
+            "<?xml" => tag = Tag::XML,
+            "<html" => tag = Tag::Html,
+            "<head" => {},
+            "<title" => {},
+            "<meta" => tag = Tag::Meta,
+            "<body" => {},
+            "<div" => {},
+            "<span" => {},
+            "<img" => tag = Tag::Img,
+
+            _ => {}
+        }
+        return tag;
     }
 
     fn parse_php_tag(str: &str) -> Element {
 
         return Element::default();
+    }
+
+    fn parse_elements(tokens: &mut Vec<Token>, tag: Option<Tag>) -> Option<Vec<Element>> {
+
+        let mut elements: Vec<Element> = Vec::<Element>::new();
+
+        // while tokens
+        // if token type = Open
+        //  parse token details
+        //  eat token
+        //  parse_elements() while token != EndTag && tag != prev open tag
+        //  add tokens to element
+        // return element
+
+
+        let mut tag: Tag = tag.unwrap_or(Tag::Unknown);
+        let mut next_tag: Tag = Tag::Unknown;
+        let mut element: Element = Element::default();
+
+
+        
+        while tokens.len() > 0 {
+            match &tokens[0] {
+
+                Token::SelfClosing(str) => {
+                    element.tag = Self::parse_tag(&str);
+                    element.children = None;
+                    element.attr = Self::parse_attributes(&str);
+                    element.content = None;
+                    elements.push(element);
+                    element = Element::default();
+                }
+
+                /* Token::StartTag(str) => {
+                    tag = Self::parse_tag(&str);
+                    element.tag = tag;
+                    element.attr = Self::parse_attributes(&str);
+                    element.children = Self::parse_elements(tokens, Some(tag));
+                },
+                Token::Content(str) => element.content = Some(str.to_string()),
+                Token::EndTag(str) => {
+                    elements.push(element);
+                    element = Element::default();
+                }, */
+
+
+
+                Token::Doctype(str) | Token::XML(str) => {
+                    element.content = None;
+                    element.children = None;
+                    element.attr = Self::parse_attributes(&str);
+                    element.tag = Self::parse_tag(&str);
+                    elements.push(element);
+                    element = Element::default();
+                },
+
+                Token::PHP(str) => todo!(),
+
+                _ => {},
+            }
+
+            *tokens = tokens[1..].to_vec();
+        }
+
+        if elements.len() > 0 {
+            return Some(elements)
+        }else{
+            return None;
+        }
     }
     
 }
