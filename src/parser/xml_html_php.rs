@@ -210,13 +210,37 @@ impl Parser {
     }
 
     fn parse_attributes(str: &str) -> Option<Attributes> {
-        let str = str.strip_prefix(| p | p == '<').unwrap_or(str).strip_suffix(|p| p == '>').unwrap_or(str);
-        let str_attr: Vec<&str> = str.split(" ").collect::<Vec<&str>>()[1..].to_vec();
-        if str_attr.len() < 1 {
+        let mut str = str.strip_prefix(| p | p == '<').unwrap_or(str).strip_suffix(|p| p == '>').unwrap_or(str).to_string();
+        let mut attrs: Vec<String> = Vec::new();
+        let mut attribute = String::new();
+        let mut in_quote: bool = false;
+
+        while str.len() > 0 {
+            match str.chars().nth(0).unwrap() {
+                '\"' => in_quote = !in_quote,
+                ' ' => {
+                    if in_quote {
+                        attribute.push(' ');
+                    } else {
+                        attrs.push(attribute);
+                        attribute = String::new();
+                    }
+                }
+                '/' => {
+                    if in_quote {
+                        attribute.push('/');
+                    }
+                }
+                ch => attribute.push(ch),
+            }
+            str = String::from_utf8(str.bytes().collect::<Vec<u8>>()[1..].to_vec()).unwrap();
+        }
+
+        if attrs.len() < 1 {
             return None;
         } else {
             let mut attr: Attributes = Attributes::new();
-            for mut str in str_attr.clone() {
+            for mut str in attrs[1..].to_vec().clone() {
                 let mut key = String::new();
                 let mut val = String::new();
                 let mut is_key: bool = true;
@@ -233,7 +257,6 @@ impl Parser {
             }
             return Some(attr);
         }
-        
     }
 
     fn parse_tag(str: &str) -> Tag {
