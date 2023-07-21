@@ -209,7 +209,6 @@ impl Parser {
         return root_element;
     }
 
-
     fn parse_attributes(str: &str) -> Option<Attributes> {
         let str = str.strip_prefix(| p | p == '<').unwrap_or(str).strip_suffix(|p| p == '>').unwrap_or(str);
         let str_attr: Vec<&str> = str.split(" ").collect::<Vec<&str>>()[1..].to_vec();
@@ -232,7 +231,6 @@ impl Parser {
                 key = String::new();
                 val = String::new();
             }
-            println!("str: {}, attr: {:?}, str_attr: {:?}", str, attr, str_attr);
             return Some(attr);
         }
         
