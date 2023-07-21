@@ -1,6 +1,7 @@
 #![allow(dead_code, unused_variables, unused_assignments, unused_mut)]
 
 use std::collections::{HashMap};
+use crate::utils::clean_string;
 
 #[derive(Debug)]
 pub enum Value {
@@ -188,7 +189,7 @@ impl Json {
                     if key.is_empty() {
                         match token {
                             TokenType::Ident(val) => {
-                                key = Self::clean_string(val);
+                                key = clean_string(val);
                             }
                             _ => {}
                         };
@@ -232,7 +233,7 @@ impl Json {
                         .len()
                         > 1 =>
                 {
-                    Ok(Value::String(Self::clean_string(str)))
+                    Ok(Value::String(clean_string(str)))
                 }
                 str if str.contains(".") => Ok(Value::Float(str.parse::<f32>().unwrap())),
                 str => Ok(Value::Int(str.parse::<i32>().unwrap())),
@@ -240,9 +241,5 @@ impl Json {
             },
             t => Err(format!("Token value cannot be parsed, {:?}", t)),
         }
-    }
-
-    fn clean_string(str: &str) -> String {
-        str.chars().filter(|ch| *ch != '\"').collect::<String>()
     }
 }

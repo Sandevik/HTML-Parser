@@ -1,6 +1,7 @@
 #![allow(dead_code, unused_variables, unused_assignments, unused_mut)]
 
 use std::{collections::HashMap, rc::Rc};
+use crate::utils::clean_string;
 
 #[derive(Debug)]
 pub struct Consumer {
@@ -95,7 +96,7 @@ pub enum Tag {
     Root,
 }
 
-pub type Attributes = Vec<HashMap<String, String>>;
+pub type Attributes = HashMap<String, String>;
 
 #[derive(Debug, PartialEq)]
 pub struct Element {
@@ -205,37 +206,67 @@ impl Parser {
         let mut tokens: Vec<Token> = Self::tokenize(consumer);
         root_element.children = Self::parse_elements(&mut tokens, None);
         root_element.tag = Tag::Root;
-        
-
         return root_element;
     }
 
 
     fn parse_attributes(str: &str) -> Option<Attributes> {
-
-        return None;
+        let str = str.strip_prefix(| p | p == '<').unwrap_or(str).strip_suffix(|p| p == '>').unwrap_or(str);
+        let str_attr: Vec<&str> = str.split(" ").collect::<Vec<&str>>()[1..].to_vec();
+        if str_attr.len() < 1 {
+            return None;
+        } else {
+            let mut attr: Attributes = Attributes::new();
+            for mut str in str_attr.clone() {
+                let mut key = String::new();
+                let mut val = String::new();
+                let mut is_key: bool = true;
+                let attrs = str.split("=").collect::<Vec<&str>>();
+                key = attrs[0].to_string();
+                if attrs.len() > 1 {
+                    val = clean_string(attrs[1]);
+                }
+                if key != "/" {
+                    attr.insert(key, val);
+                }
+                key = String::new();
+                val = String::new();
+            }
+            println!("str: {}, attr: {:?}, str_attr: {:?}", str, attr, str_attr);
+            return Some(attr);
+        }
+        
     }
 
     fn parse_tag(str: &str) -> Tag {
-        let mut tag: Tag = Tag::Unknown;
+        let str = str.strip_prefix(|p| p == '<').unwrap_or(str);
 
-        /* TODO: Redo match with regex */
+        /* TODO: Redo match with regex? */
 
         match str.split(' ').collect::<Vec<&str>>()[0] {
-            "<!Doctype" => tag = Tag::Doctype,
-            "<?xml" => tag = Tag::XML,
-            "<html" => tag = Tag::Html,
-            "<head" => {},
-            "<title" => {},
-            "<meta" => tag = Tag::Meta,
-            "<body" => {},
-            "<div" => {},
-            "<span" => {},
-            "<img" => tag = Tag::Img,
+            "!DOCTYPE" => Tag::Doctype,
+            "?xml" => Tag::XML,
+            "html" => Tag::Html,
+            "head" => Tag::Head,
+            "title" => Tag::Title,
+            "meta" => Tag::Meta,
+            "body" => Tag::Body,
+            "div" => Tag::Div,
+            "span" => Tag::Span,
+            "img" => Tag::Img,
+            "h1" => Tag::H1,
+            "h2" => Tag::H2,
+            "h3" => Tag::H3,
+            "h4" => Tag::H4,
+            "h5" => Tag::H5,
+            "h6" => Tag::H6,
+            "p" => Tag::P,
+                /* TODO: Add more! */
 
-            _ => {}
+            "<?php" => Tag::PHP,
+
+            _ => Tag::Unknown
         }
-        return tag;
     }
 
     fn parse_php_tag(str: &str) -> Element {
