@@ -209,7 +209,7 @@ impl Parser {
         return root_element;
     }
 
-    fn parse_attributes(str: &str) -> Option<Attributes> {
+    fn convert_tag(str: &str) -> Vec<String> {
         let mut str = str.strip_prefix(| p | p == '<').unwrap_or(str).strip_suffix(|p| p == '>').unwrap_or(str).to_string();
         let mut attrs: Vec<String> = Vec::new();
         let mut attribute = String::new();
@@ -235,12 +235,18 @@ impl Parser {
             }
             str = String::from_utf8(str.bytes().collect::<Vec<u8>>()[1..].to_vec()).unwrap();
         }
+        return attrs
+    }
+
+
+    fn parse_attributes(str: &str) -> Option<Attributes> {
+        let attrs = Self::convert_tag(str)[1..].to_vec();
 
         if attrs.len() < 1 {
             return None;
         } else {
             let mut attr: Attributes = Attributes::new();
-            for mut str in attrs[1..].to_vec().clone() {
+            for mut str in attrs.clone() {
                 let mut key = String::new();
                 let mut val = String::new();
                 let mut is_key: bool = true;
@@ -260,11 +266,11 @@ impl Parser {
     }
 
     fn parse_tag(str: &str) -> Tag {
-        let str = str.strip_prefix(|p| p == '<').unwrap_or(str);
+        let tag = &Self::convert_tag(str)[0];
 
         /* TODO: Redo match with regex? */
 
-        match str.split(' ').collect::<Vec<&str>>()[0] {
+        match tag.as_str() {
             "!DOCTYPE" => Tag::Doctype,
             "?xml" => Tag::XML,
             "html" => Tag::Html,
@@ -284,7 +290,7 @@ impl Parser {
             "p" => Tag::P,
                 /* TODO: Add more! */
 
-            "<?php" => Tag::PHP,
+            "?php" => Tag::PHP,
 
             _ => Tag::Unknown
         }
