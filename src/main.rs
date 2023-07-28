@@ -1,3 +1,4 @@
+#![allow(unused_mut)]
 use std::fs;
 
 use parser::xml_html_php::Consumer;

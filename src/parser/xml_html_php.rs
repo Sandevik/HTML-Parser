@@ -62,7 +62,7 @@ enum TokenType {
     PHP,
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Tag {
     Doctype,
     XML,
@@ -93,6 +93,7 @@ pub enum Tag {
     
     
     Unknown,
+    Tag(String),
     Root,
 }
 
@@ -102,7 +103,7 @@ pub type Attributes = HashMap<String, String>;
 pub struct Element {
     tag: Tag,
     content: Option<String>,
-    attr: Option<Attributes>,
+    attributes: Option<Attributes>,
     children: Option<Vec<Element>>,
 }
 impl Element {
@@ -110,16 +111,16 @@ impl Element {
         Element {
             tag: Tag::Unknown,
             content: None,
-            attr: None,
+            attributes: None,
             children: None
         }
     }
 
-    pub fn new(tag: Tag, content: Option<String>, attr: Option<Attributes>, children: Option<Vec<Element>>) -> Element {
+    pub fn new(tag: Tag, content: Option<String>, attributes: Option<Attributes>, children: Option<Vec<Element>>) -> Element {
         Element {
             tag: tag,
             content: content,
-            attr: attr,
+            attributes: attributes,
             children: children,
         }
     }
@@ -210,6 +211,7 @@ impl Parser {
     }
 
     fn convert_tag(str: &str) -> Vec<String> {
+        /* Will convert a string like "<html lang="en">" to ["html", "lang=\"en\""] */
         let mut str = str.strip_prefix(| p | p == '<').unwrap_or(str).strip_suffix(|p| p == '>').unwrap_or(str).to_string();
         let mut attrs: Vec<String> = Vec::new();
         let mut attribute = String::new();
@@ -235,13 +237,14 @@ impl Parser {
             }
             str = String::from_utf8(str.bytes().collect::<Vec<u8>>()[1..].to_vec()).unwrap();
         }
+        if !attribute.is_empty() {
+            attrs.push(attribute);
+        }
         return attrs
     }
 
-
     fn parse_attributes(str: &str) -> Option<Attributes> {
         let attrs = Self::convert_tag(str)[1..].to_vec();
-
         if attrs.len() < 1 {
             return None;
         } else {
@@ -266,10 +269,8 @@ impl Parser {
     }
 
     fn parse_tag(str: &str) -> Tag {
-        let tag = &Self::convert_tag(str)[0];
-
-        /* TODO: Redo match with regex? */
-
+        let tag: &String = &Self::convert_tag(&str)[0];
+        println!("{}", tag);
         match tag.as_str() {
             "!DOCTYPE" => Tag::Doctype,
             "?xml" => Tag::XML,
@@ -288,11 +289,14 @@ impl Parser {
             "h5" => Tag::H5,
             "h6" => Tag::H6,
             "p" => Tag::P,
+            "li" => Tag::Li,
+            "ol" => Tag::Ol,
+            "ul" => Tag::Ul,
                 /* TODO: Add more! */
 
             "?php" => Tag::PHP,
 
-            _ => Tag::Unknown
+            str => todo!("Lägg till fler taggar: {}", str)
         }
     }
 
@@ -301,17 +305,17 @@ impl Parser {
         return Element::default();
     }
 
-    fn parse_elements(tokens: &mut Vec<Token>, tag: Option<Tag>) -> Option<Vec<Element>> {
+    fn parse_elements(mut tokens: &mut Vec<Token>, tag: Option<Tag>) -> Option<Vec<Element>> {
 
         let mut elements: Vec<Element> = Vec::<Element>::new();
 
         // while tokens
-        // if token type = Open
-        //  parse token details
-        //  eat token
-        //  parse_elements() while token != EndTag && tag != prev open tag
-        //  add tokens to element
-        // return element
+        // if next tag is not endtag or content
+        // parse_elements -> ret children: Some(Vec<Element>)
+        // else if next tag == content
+        //  element.content += this content
+        // else /* Element is EndTag */
+        // elements.push()
 
 
         let mut tag: Tag = tag.unwrap_or(Tag::Unknown);
@@ -321,35 +325,33 @@ impl Parser {
 
         
         while tokens.len() > 0 {
-            match &tokens[0] {
+            match tokens[0].clone() {
 
-                Token::SelfClosing(str) => {
+                Token::StartTag(str) => {
                     element.tag = Self::parse_tag(&str);
-                    element.children = None;
-                    element.attr = Self::parse_attributes(&str);
-                    element.content = None;
-                    elements.push(element);
-                    element = Element::default();
-                }
-
-                /* Token::StartTag(str) => {
-                    tag = Self::parse_tag(&str);
-                    element.tag = tag;
-                    element.attr = Self::parse_attributes(&str);
-                    element.children = Self::parse_elements(tokens, Some(tag));
+                    element.attributes = Self::parse_attributes(&str);
+                    *tokens = tokens[1..].to_vec();
+                    element.children = Self::parse_elements(tokens, Some(element.tag.clone()));
+                    
                 },
-                Token::Content(str) => element.content = Some(str.to_string()),
+                Token::Content(str) => {
+                    if element.content.is_some() {
+                        let mut content = element.content.unwrap();
+                        content.push_str(&str);
+                        element.content = Some(content);
+                    } else {
+                        element.content = Some(str.to_string());
+                    }
+                },
                 Token::EndTag(str) => {
                     elements.push(element);
                     element = Element::default();
-                }, */
+                }, 
 
-
-
-                Token::Doctype(str) | Token::XML(str) => {
+                Token::SelfClosing(str) | Token::Doctype(str) | Token::XML(str) => {
                     element.content = None;
                     element.children = None;
-                    element.attr = Self::parse_attributes(&str);
+                    element.attributes = Self::parse_attributes(&str);
                     element.tag = Self::parse_tag(&str);
                     elements.push(element);
                     element = Element::default();
@@ -357,16 +359,28 @@ impl Parser {
 
                 Token::PHP(str) => todo!(),
 
-                _ => {},
+                Token => {},
             }
 
-            *tokens = tokens[1..].to_vec();
+            if tokens.len() > 0 {
+                *tokens = tokens[1..].to_vec();
+            }
+            println!("{:?}", element);
         }
 
         if elements.len() > 0 {
             return Some(elements)
         }else{
             return None;
+        }
+    }
+
+    fn get_next_tag_type(token: Token) -> TokenType{
+        match token {
+            Token::StartTag(_) => TokenType::StartTag,
+            Token::EndTag(_) => TokenType::EndTag,
+            Token::SelfClosing(_) => TokenType::SelfClosing,
+            _ => TokenType::Unknown,
         }
     }
     
