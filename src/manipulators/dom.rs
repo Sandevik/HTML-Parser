@@ -38,29 +38,26 @@ impl Consumer {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Token {
-    Doctype(String),
-    XML(String),
-    PHP(String),
-    StartTag(String),
-    EndTag(String),
-    SelfClosing(String),
-    Comment(String),
-    Content(String),
-    EOF,
-}
+
+
+#[derive(Debug, Clone, PartialEq)]
 enum TokenType {
-    Doctype,
-    StartTag,
-    EndTag,
+    Open,
+    Close,
     SelfClosing,
+    None,
     Comment,
-    EOF,
-    Unknown,
-    XML,
-    PHP,
+    Content,
+    PHP
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Token {
+    content: String,
+    tag_type: TokenType,
+}
+
+
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Tag {
@@ -126,27 +123,29 @@ impl Element {
     }
 }
 
-pub struct Parser {}
-impl Parser {
+pub struct DOM {}
+impl DOM {
     pub fn tokenize(mut consumer: Consumer) -> Vec<Token> {
         let mut tokens: Vec<Token> = Vec::<Token>::new();
-        let mut token_type: TokenType = TokenType::Unknown;
+        let mut token: Token = Token { content: "".to_string(), tag_type: TokenType::None };
+
+
+        let mut token_type: TokenType = TokenType::None;
         let mut ident: String = String::new();
         while consumer.pos < consumer.size {
             match consumer.ch {
                 '<' => {
                     if ident.len() > 0 {
-                        tokens.push(Token::Content(ident));
                         ident = String::new();
                     }
                     if consumer.peek() == '/' {
                         //closing tag
-                        token_type = TokenType::EndTag;
+                        token_type = TokenType::Close;
                         ident.push(consumer.ch);
                     } else if consumer.peek() == '!' {
                         if consumer.buf[consumer.pos + 2] == b'D' {
                             //Doctype
-                            token_type = TokenType::Doctype;
+                            token_type = TokenType::SelfClosing;
                         } else {
                             // comment
                             token_type = TokenType::Comment;
@@ -158,14 +157,14 @@ impl Parser {
                         if consumer.buf[consumer.pos + 2] != b'p'
                             && consumer.buf[consumer.pos + 2] != b'='
                         {
-                            token_type = TokenType::XML
+                            token_type = TokenType::SelfClosing
                         } else {
                             token_type = TokenType::PHP
                         }
                         ident.push(consumer.ch);
                     } else {
                         // opening tag
-                        token_type = TokenType::StartTag;
+                        token_type = TokenType::Open;
                         ident.push(consumer.ch);
                     }
                 }
@@ -180,17 +179,16 @@ impl Parser {
                 }
                 '>' => {
                     ident.push('>');
+                
                     let copy_ident = ident.clone();
                     let token: Token = match token_type {
-                        TokenType::Doctype => Token::Doctype(copy_ident),
-                        TokenType::XML => Token::XML(copy_ident),
-                        TokenType::StartTag => Token::StartTag(copy_ident),
-                        TokenType::EndTag => Token::EndTag(copy_ident),
-                        TokenType::SelfClosing => Token::SelfClosing(copy_ident),
-                        TokenType::Comment => Token::Comment(copy_ident),
-                        TokenType::EOF => Token::EOF,
-                        TokenType::Unknown => Token::Content(copy_ident),
-                        TokenType::PHP => Token::PHP(copy_ident),
+                        TokenType::SelfClosing => Token {content: copy_ident, tag_type: TokenType::SelfClosing},
+                        TokenType::Open => Token {content: copy_ident, tag_type: TokenType::Open},
+                        TokenType::Close => Token {content: copy_ident, tag_type: TokenType::Close},
+                        TokenType::Comment => Token {content: copy_ident, tag_type: TokenType::Comment},
+                        TokenType::None => Token {content: copy_ident, tag_type: TokenType::None},
+                        TokenType::PHP => Token {content: copy_ident, tag_type: TokenType::PHP},
+                        TokenType::Content => Token { content: copy_ident, tag_type: TokenType::Content }
                     };
                     tokens.push(token);
                     ident = String::new();
@@ -204,8 +202,8 @@ impl Parser {
 
     pub fn parse(consumer: Consumer) -> Element {
         let mut root_element: Element = Element::default();
-        let mut tokens: Vec<Token> = Self::tokenize(consumer);
-        root_element.children = Self::parse_elements(&mut tokens, None);
+        let mut tokens = Self::tokenize(consumer);
+        root_element.children = Self::parse_elements(&mut tokens);
         root_element.tag = Tag::Root;
         return root_element;
     }
@@ -270,7 +268,6 @@ impl Parser {
 
     fn parse_tag(str: &str) -> Tag {
         let tag: &String = &Self::convert_tag(&str)[0];
-        println!("{}", tag);
         match tag.as_str() {
             "!DOCTYPE" => Tag::Doctype,
             "?xml" => Tag::XML,
@@ -305,69 +302,56 @@ impl Parser {
         return Element::default();
     }
 
-    fn parse_elements(mut tokens: &mut Vec<Token>, tag: Option<Tag>) -> Option<Vec<Element>> {
-
+    fn parse_elements(mut tokens: &mut Vec<Token>) -> Option<Vec<Element>> {
         let mut elements: Vec<Element> = Vec::<Element>::new();
-
-        // while tokens
-        // if next tag is not endtag or content
-        // parse_elements -> ret children: Some(Vec<Element>)
-        // else if next tag == content
-        //  element.content += this content
-        // else /* Element is EndTag */
-        // elements.push()
-
-
-        let mut tag: Tag = tag.unwrap_or(Tag::Unknown);
-        let mut next_tag: Tag = Tag::Unknown;
         let mut element: Element = Element::default();
 
-
-        
         while tokens.len() > 0 {
-            match tokens[0].clone() {
+            match tokens[0].tag_type.clone() {
 
-                Token::StartTag(str) => {
-                    element.tag = Self::parse_tag(&str);
-                    element.attributes = Self::parse_attributes(&str);
+                TokenType::Open => {
                     *tokens = tokens[1..].to_vec();
-                    element.children = Self::parse_elements(tokens, Some(element.tag.clone()));
-                    
+                    element.tag = Self::parse_tag(&tokens[0].content);
+                    element.attributes = Self::parse_attributes(&tokens[0].content);
+                    element.children = Self::parse_elements(tokens)
                 },
-                Token::Content(str) => {
+
+                TokenType::Content => {
                     if element.content.is_some() {
                         let mut content = element.content.unwrap();
-                        content.push_str(&str);
+                        content.push_str(&tokens[0].content);
                         element.content = Some(content);
                     } else {
-                        element.content = Some(str.to_string());
+                        element.content = Some(tokens[0].content.to_string());
                     }
                 },
-                Token::EndTag(str) => {
+
+
+
+
+                TokenType::Close => {
                     elements.push(element);
                     element = Element::default();
                 }, 
 
-                Token::SelfClosing(str) | Token::Doctype(str) | Token::XML(str) => {
+                TokenType::SelfClosing => {
                     element.content = None;
                     element.children = None;
-                    element.attributes = Self::parse_attributes(&str);
-                    element.tag = Self::parse_tag(&str);
+                    element.attributes = Self::parse_attributes(&tokens[0].content);
+                    element.tag = Self::parse_tag(&tokens[0].content);
                     elements.push(element);
                     element = Element::default();
                 },
 
-                Token::PHP(str) => todo!(),
+                TokenType::PHP => todo!(),
 
-                Token => {},
+                _ => {},
             }
 
             if tokens.len() > 0 {
                 *tokens = tokens[1..].to_vec();
             }
-            println!("{:?}", element);
         }
-
         if elements.len() > 0 {
             return Some(elements)
         }else{
@@ -375,13 +359,5 @@ impl Parser {
         }
     }
 
-    fn get_next_tag_type(token: Token) -> TokenType{
-        match token {
-            Token::StartTag(_) => TokenType::StartTag,
-            Token::EndTag(_) => TokenType::EndTag,
-            Token::SelfClosing(_) => TokenType::SelfClosing,
-            _ => TokenType::Unknown,
-        }
-    }
     
 }
