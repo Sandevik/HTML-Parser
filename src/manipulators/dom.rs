@@ -97,7 +97,7 @@ pub enum Tag {
 
 pub type Attributes = HashMap<String, String>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Element {
     tag: Tag,
     content: Option<String>,
@@ -129,8 +129,6 @@ impl DOM {
     pub fn tokenize(mut consumer: Consumer) -> Vec<Token> {
         let mut tokens: Vec<Token> = Vec::<Token>::new();
         let mut token: Token = Token { tag: Tag::None, raw: "".to_string(), tag_type: TokenType::None };
-
-
         let mut token_type: TokenType = TokenType::None;
         let mut ident: String = String::new();
         while consumer.pos < consumer.size {
@@ -205,7 +203,8 @@ impl DOM {
     pub fn parse(consumer: Consumer) -> Element {
         let mut root_element: Element = Element::default();
         let mut tokens = Self::tokenize(consumer);
-        root_element.children = Self::parse_elements(&mut tokens);
+        let (elements, _) = Self::parse_elements(&mut tokens);
+        root_element.children = elements;
         root_element.tag = Tag::Root;
         return root_element;
     }
@@ -304,45 +303,51 @@ impl DOM {
         return Element::default();
     }
 
-    fn parse_elements(mut tokens: &mut Vec<Token>) -> Option<Vec<Element>> {
+    fn parse_elements(mut tokens: &mut Vec<Token>) -> (Option<Vec<Element>>, Option<String>) {
         let mut elements: Vec<Element> = Vec::<Element>::new();
         let mut element: Element = Element::default();
+        let mut content: String = String::new();
 
         while tokens.len() > 0 {
-            match tokens[0].tag_type.clone() {
+            let token = tokens[0].clone();
+            println!("Tokens left {}: {:?}", tokens.len(), tokens);
+            match token.tag_type {
 
                 TokenType::Open => {
                     *tokens = tokens[1..].to_vec();
-                    element.tag = Self::parse_tag(&tokens[0].raw);
-                    element.attributes = Self::parse_attributes(&tokens[0].raw);
-                    element.children = Self::parse_elements(tokens)
+                    element.tag = token.tag;
+                    element.attributes = Self::parse_attributes(&token.raw);
+                    let mut content = String::new();
+                    let mut inner_children: Option<Vec<Element>> = None;
+                    while tokens.len() > 0 {
+                        let (inner_children, inner_content) = Self::parse_elements(tokens);
+                        if tokens.len() > 0 {
+                            *tokens = tokens[1..].to_vec();
+                        }
+                        content.push_str(&inner_content.unwrap())
+                    }
+                    element.content = Some(content);
+                    element.children = inner_children;
+                    elements.push(element);
+                    element = Element::default();
+
                 },
 
                 TokenType::Content => {
-                    if element.content.is_some() {
-                        let mut content = element.content.unwrap();
-                        content.push_str(&tokens[0].raw);
-                        element.content = Some(content);
-                    } else {
-                        element.content = Some(tokens[0].raw.to_string());
-                    }
+                    content.push_str(&token.raw);
                 },
 
 
 
 
-                TokenType::Close => {
-                    elements.push(element);
-                    element = Element::default();
-                }, 
+                
 
                 TokenType::SelfClosing => {
                     element.content = None;
                     element.children = None;
                     element.attributes = Self::parse_attributes(&tokens[0].raw);
                     element.tag = Self::parse_tag(&tokens[0].raw);
-                    elements.push(element);
-                    element = Element::default();
+                    elements.push(element.clone());
                 },
 
                 TokenType::PHP => todo!(),
@@ -353,11 +358,13 @@ impl DOM {
             if tokens.len() > 0 {
                 *tokens = tokens[1..].to_vec();
             }
+            println!("Current Element: {:?}", element);
         }
+
         if elements.len() > 0 {
-            return Some(elements)
+            return (Some(elements), Some(content))
         }else{
-            return None;
+            return (None, Some(content));
         }
     }
 
