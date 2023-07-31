@@ -53,7 +53,8 @@ enum TokenType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {
-    content: String,
+    tag: Tag,
+    raw: String,
     tag_type: TokenType,
 }
 
@@ -88,7 +89,7 @@ pub enum Tag {
 
     PHP,
     
-    
+    None,
     Unknown,
     Tag(String),
     Root,
@@ -127,7 +128,7 @@ pub struct DOM {}
 impl DOM {
     pub fn tokenize(mut consumer: Consumer) -> Vec<Token> {
         let mut tokens: Vec<Token> = Vec::<Token>::new();
-        let mut token: Token = Token { content: "".to_string(), tag_type: TokenType::None };
+        let mut token: Token = Token { tag: Tag::None, raw: "".to_string(), tag_type: TokenType::None };
 
 
         let mut token_type: TokenType = TokenType::None;
@@ -136,6 +137,7 @@ impl DOM {
             match consumer.ch {
                 '<' => {
                     if ident.len() > 0 {
+                        tokens.push(Token {tag: Tag::None, raw: ident, tag_type: TokenType::Content});
                         ident = String::new();
                     }
                     if consumer.peek() == '/' {
@@ -182,13 +184,13 @@ impl DOM {
                 
                     let copy_ident = ident.clone();
                     let token: Token = match token_type {
-                        TokenType::SelfClosing => Token {content: copy_ident, tag_type: TokenType::SelfClosing},
-                        TokenType::Open => Token {content: copy_ident, tag_type: TokenType::Open},
-                        TokenType::Close => Token {content: copy_ident, tag_type: TokenType::Close},
-                        TokenType::Comment => Token {content: copy_ident, tag_type: TokenType::Comment},
-                        TokenType::None => Token {content: copy_ident, tag_type: TokenType::None},
-                        TokenType::PHP => Token {content: copy_ident, tag_type: TokenType::PHP},
-                        TokenType::Content => Token { content: copy_ident, tag_type: TokenType::Content }
+                        TokenType::SelfClosing => Token {tag: Self::parse_tag(&copy_ident), raw: copy_ident, tag_type: TokenType::SelfClosing},
+                        TokenType::Open => Token {tag: Self::parse_tag(&copy_ident), raw: copy_ident, tag_type: TokenType::Open},
+                        TokenType::Close => Token {tag: Self::parse_tag(&copy_ident), raw: copy_ident, tag_type: TokenType::Close},
+                        TokenType::Comment => Token {tag: Self::parse_tag(&copy_ident), raw: copy_ident, tag_type: TokenType::Comment},
+                        TokenType::None => Token {tag: Tag::None, raw: copy_ident, tag_type: TokenType::None},
+                        TokenType::PHP => Token {tag: Self::parse_tag(&copy_ident), raw: copy_ident, tag_type: TokenType::PHP},
+                        TokenType::Content => Token {tag: Tag::None, raw: copy_ident, tag_type: TokenType::Content }
                     };
                     tokens.push(token);
                     ident = String::new();
@@ -311,18 +313,18 @@ impl DOM {
 
                 TokenType::Open => {
                     *tokens = tokens[1..].to_vec();
-                    element.tag = Self::parse_tag(&tokens[0].content);
-                    element.attributes = Self::parse_attributes(&tokens[0].content);
+                    element.tag = Self::parse_tag(&tokens[0].raw);
+                    element.attributes = Self::parse_attributes(&tokens[0].raw);
                     element.children = Self::parse_elements(tokens)
                 },
 
                 TokenType::Content => {
                     if element.content.is_some() {
                         let mut content = element.content.unwrap();
-                        content.push_str(&tokens[0].content);
+                        content.push_str(&tokens[0].raw);
                         element.content = Some(content);
                     } else {
-                        element.content = Some(tokens[0].content.to_string());
+                        element.content = Some(tokens[0].raw.to_string());
                     }
                 },
 
@@ -337,8 +339,8 @@ impl DOM {
                 TokenType::SelfClosing => {
                     element.content = None;
                     element.children = None;
-                    element.attributes = Self::parse_attributes(&tokens[0].content);
-                    element.tag = Self::parse_tag(&tokens[0].content);
+                    element.attributes = Self::parse_attributes(&tokens[0].raw);
+                    element.tag = Self::parse_tag(&tokens[0].raw);
                     elements.push(element);
                     element = Element::default();
                 },
